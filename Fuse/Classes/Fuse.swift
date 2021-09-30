@@ -36,7 +36,7 @@ public class Fuse {
     
     public typealias Pattern = (text: String, len: Int, mask: Int, alphabet: [Character: Int])
     
-    public typealias SearchResult = (index: Int, score: Double, ranges: [CountableClosedRange<Int>])
+    public typealias SearchResult = (index: Int, score: Double, ranges: [Range<String.Index>])
     
     public typealias FusableSearchResult = (
         index: Int,
@@ -44,7 +44,7 @@ public class Fuse {
         results: [(
             key: String,
             score: Double,
-            ranges: [CountableClosedRange<Int>]
+            ranges: [Range<String.Index>]
         )]
     )
     
@@ -101,7 +101,7 @@ public class Fuse {
     ///   - pattern: The pattern to search for. This is created by calling `createPattern`
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters. If no match is found will return nil.
-    public func search(_ pattern: Pattern?, in aString: String) -> (score: Double, ranges: [CountableClosedRange<Int>])? {
+    public func search(_ pattern: Pattern?, in aString: String) -> (score: Double, ranges: [Range<String.Index>])? {
         guard let pattern = pattern else {
             return nil
         }
@@ -121,7 +121,7 @@ public class Fuse {
             }
             
             //Average the total score by dividing the summed scores by the number of word searches + the full string search. Also remove any range duplicates since we are searching full string and words individually.
-            let averagedResult = (score: results.score / Double(wordPatterns.count + 1), ranges: Array<CountableClosedRange<Int>>(Set<CountableClosedRange<Int>>(results.ranges)))
+            let averagedResult = (score: results.score / Double(wordPatterns.count + 1), ranges: Array<Range<String.Index>>(Set<Range<String.Index>>(results.ranges)))
             
             //If the averaged score is 1 then there were no matches so return nil. Otherwise return the average result
             return averagedResult.score == 1 ? nil : averagedResult
@@ -143,7 +143,7 @@ public class Fuse {
     ///   - pattern: The pattern to search for. This is created by calling `createPattern`
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters. If no match is found will return a tuple with score of 1 and empty array of ranges.
-    private func _search(_ pattern: Pattern, in aString: String) -> (score: Double, ranges: [CountableClosedRange<Int>]) {
+    private func _search(_ pattern: Pattern, in aString: String) -> (score: Double, ranges: [Range<String.Index>]) {
         
         var text = aString
         
@@ -155,7 +155,7 @@ public class Fuse {
         
         // Exact match
         if (pattern.text == text) {
-            return (0, [0...textLength - 1])
+            return (0, [text.startIndex..<text.endIndex])
         }
         
         let location = self.location
@@ -293,7 +293,7 @@ public class Fuse {
             lastBitArr = bitArr
         }
         
-        return (score, FuseUtilities.findRanges(matchMaskArr))
+        return (score, FuseUtilities.findRanges(matchMaskArr, in: text))
     }
 }
 
@@ -315,7 +315,7 @@ extension Fuse {
     ///   - text: the text string to search for.
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters.
-    public func search(_ text: String, in aString: String) -> (score: Double, ranges: [CountableClosedRange<Int>])? {
+    public func search(_ text: String, in aString: String) -> (score: Double, ranges: [Range<String.Index>])? {
         return self.search(self.createPattern(from: text), in: aString)
     }
     
@@ -431,7 +431,7 @@ extension Fuse {
             var scores = [Double]()
             var totalScore = 0.0
             
-            var propertyResults = [(key: String, score: Double, ranges: [CountableClosedRange<Int>])]()
+            var propertyResults = [(key: String, score: Double, ranges: [Range<String.Index>])]()
 
             item.properties.forEach { property in
                 let value = property.name
@@ -522,7 +522,7 @@ extension Fuse {
                     var scores = [Double]()
                     var totalScore = 0.0
                     
-                    var propertyResults = [(key: String, score: Double, ranges: [CountableClosedRange<Int>])]()
+                    var propertyResults = [(key: String, score: Double, ranges: [Range<String.Index>])]()
 
                     item.properties.forEach { property in
 
@@ -567,10 +567,3 @@ extension Fuse {
         }
     }
 }
-
-#if swift(>=4.2)
-#else
-extension CountableClosedRange: Hashable where Element: Hashable {
-    public var hashValue: Int { return String(describing: self).hashValue }
-}
-#endif
