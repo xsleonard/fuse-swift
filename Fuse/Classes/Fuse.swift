@@ -77,7 +77,11 @@ public class Fuse {
     /// - Parameter aString: A string from which to create the pattern tuple
     /// - Returns: A tuple containing pattern metadata
     public func createPattern (from aString: String) -> Pattern? {
-        let pattern = self.isCaseSensitive ? aString : aString.lowercased()
+        var pattern = self.isCaseSensitive ? aString : aString.lowercased()
+        if pattern.count > maxPatternLength {
+            pattern = String(pattern.prefix(maxPatternLength))
+        }
+
         let len = pattern.count
         
         if len == 0 {
@@ -160,10 +164,6 @@ public class Fuse {
         // Exact match
         if (pattern.text == text) {
             return (0, [text.startIndex..<text.endIndex])
-        }
-        
-        if text.count > maxPatternLength {
-            text = String(text.prefix(maxPatternLength))
         }
         
         let textLength = text.count
