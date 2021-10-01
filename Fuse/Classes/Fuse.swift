@@ -33,6 +33,7 @@ public class Fuse {
     private var maxPatternLength: Int
     private var isCaseSensitive: Bool
     private var tokenize: Bool
+    let hardMaxPatternLength = 63 // Algorithm limitation due to 64-bit word limit size
     
     public typealias Pattern = (text: String, len: String.IndexDistance, mask: Int, alphabet: [Character: Int])
     
@@ -66,7 +67,7 @@ public class Fuse {
         self.location = location
         self.distance = distance
         self.threshold = threshold
-        self.maxPatternLength = maxPatternLength
+        self.maxPatternLength = min(maxPatternLength, hardMaxPatternLength)
         self.isCaseSensitive = isCaseSensitive
         self.tokenize = tokenize
     }
@@ -156,12 +157,16 @@ public class Fuse {
             text = text.lowercased()
         }
         
-        let textLength = text.count
-        
         // Exact match
         if (pattern.text == text) {
             return (0, [text.startIndex..<text.endIndex])
         }
+        
+        if text.count > maxPatternLength {
+            text = String(text.prefix(maxPatternLength))
+        }
+        
+        let textLength = text.count
         
         let location = self.location
         let distance = self.distance
