@@ -15,9 +15,9 @@ class FuseUtilities {
     /// - Parameter e: Number of errors in match.
     /// - Parameter x: Location of match.
     /// - Parameter loc: Expected location of match.
-    /// - Parameter scoreTextLength: Coerced version of text's length.
+    /// - Parameter distance: text's length.
     /// - Returns: Overall score for match (0.0 = good, 1.0 = bad).
-    static func calculateScore(_ pattern: String, e: Int, x: Int, loc: Int, distance: Int) -> Double {
+    static func calculateScore(_ pattern: String, e: Int, x: Int, loc: Int, distance: String.IndexDistance) -> Double {
         return calculateScore(pattern.count, e: e, x: x, loc: loc, distance: distance)
     }
 
@@ -27,9 +27,9 @@ class FuseUtilities {
     /// - Parameter e: Number of errors in match.
     /// - Parameter x: Location of match.
     /// - Parameter loc: Expected location of match.
-    /// - Parameter scoreTextLength: Coerced version of text's length.
+    /// - Parameter distance: Coerced version of text's length.
     /// - Returns: Overall score for match (0.0 = good, 1.0 = bad).
-    static func calculateScore(_ patternLength: Int, e: Int, x: Int, loc: Int, distance: Int) -> Double {
+    static func calculateScore(_ patternLength: Int, e: Int, x: Int, loc: Int, distance: String.IndexDistance) -> Double {
         let accuracy = Double(e) / Double(patternLength)
         let proximity = abs(x - loc)
         if (distance == 0) {
@@ -51,7 +51,7 @@ class FuseUtilities {
         return mask
     }
 
-    /// Returns an array of `Range<Int>`, where each range represents a consecutive list of `1`s.
+    /// Returns an array of `Range<String.Index>`, where each range represents a consecutive list of `1`s.
     ///
     ///     let arr = [0, 1, 1, 0, 1, 1, 1 ]
     ///     let ranges = findRanges(arr)

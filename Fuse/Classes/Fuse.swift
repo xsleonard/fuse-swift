@@ -34,7 +34,7 @@ public class Fuse {
     private var isCaseSensitive: Bool
     private var tokenize: Bool
     
-    public typealias Pattern = (text: String, len: Int, mask: Int, alphabet: [Character: Int])
+    public typealias Pattern = (text: String, len: String.IndexDistance, mask: Int, alphabet: [Character: Int])
     
     public typealias SearchResult = (index: Int, score: Double, ranges: [Range<String.Index>])
     
@@ -112,10 +112,15 @@ public class Fuse {
             let wordPatterns = pattern.text.split(separator: " ").compactMap { createPattern(from: String($0)) }
             
             //Get the result for testing the full pattern string. If 2 strings have equal individual word matches this will boost the full string that matches best overall to the top
+            let fullPattern = pattern
             let fullPatternResult = _search(pattern, in: aString)
             
             //Reduce all the word pattern matches and the full pattern match into a totals tuple
             let results = wordPatterns.reduce(into: fullPatternResult) { (totalResult, pattern) in
+                // Skip searching the same pattern twice
+                if pattern == fullPattern {
+                    return
+                }
                 let result = _search(pattern, in: aString)
                 totalResult = (totalResult.score + result.score, totalResult.ranges + result.ranges)
             }
@@ -162,7 +167,7 @@ public class Fuse {
         let distance = self.distance
         var threshold = self.threshold
         
-        var bestLocation: Int? = {
+        var bestLocation: String.IndexDistance? = {
             if let index = text.index(of: pattern.text, startingFrom: location) {
                 return text.distance(from: text.startIndex, to: index)
             }
@@ -293,7 +298,20 @@ public class Fuse {
             lastBitArr = bitArr
         }
         
-        return (score, FuseUtilities.findRanges(matchMaskArr, in: text))
+        // Find ranges and convert back to aString.
+        // Ranges can't be generated from one string and used in another.
+        let textRanges = FuseUtilities.findRanges(matchMaskArr, in: text)
+        var ranges: [Range<String.Index>] = []
+        for r in textRanges {
+            let pos = text.distance(from: text.startIndex, to: r.lowerBound)
+            let len = text.distance(from: r.lowerBound, to: r.upperBound)
+            if let low = aString.index(aString.startIndex, offsetBy: pos, limitedBy: aString.endIndex),
+               let high = aString.index(low, offsetBy: len, limitedBy: aString.endIndex) {
+                ranges.append(low..<high)
+            }
+        }
+        
+        return (score, ranges)
     }
 }
 
