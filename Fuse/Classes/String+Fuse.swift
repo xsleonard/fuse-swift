@@ -66,7 +66,12 @@ extension String {
 extension NSString {
     func localizedStandardRange(of searchString: String, range: NSRange) -> NSRange {
         let ss = self.substring(with: range) as NSString
-        return ss.localizedStandardRange(of: searchString)
+        let r = ss.localizedStandardRange(of: searchString)
+        
+        // Translate the location of the substring back to its location in the main string
+        let loc = r.location + range.location
+        
+        return NSRange(location: loc, length: r.length)
     }
 
     func index(of string: String, startingFrom position: Int? = 0) -> Int? {
