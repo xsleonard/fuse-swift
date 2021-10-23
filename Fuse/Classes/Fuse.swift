@@ -174,12 +174,10 @@ public class Fuse {
         var threshold = self.threshold
         
         var bestLocation: Int? = {
-            let inRange = NSRange(location: location, length: pattern.len - location)
-            let range = text.localizedStandardRange(of: pattern.text as String, range: inRange)
-            if range.location == NSNotFound {
+            guard let index = text.index(of: pattern.text as String, startingFrom: location) else {
                 return nil
             }
-            return abs(range.location - location)
+            return abs(index - location)
         }()
         
         // A mask of the matches. We'll use to determine all the ranges of the matches
