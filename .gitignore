@@ -34,3 +34,5 @@ Carthage
 
 # Swift PM
 .swiftpm
+
+Example/Pods/Pods.xcodeproj/project.xcworkspace/

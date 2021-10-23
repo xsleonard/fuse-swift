@@ -35,9 +35,9 @@ public class Fuse {
     private var tokenize: Bool
     let hardMaxPatternLength = 63 // Algorithm limitation due to 64-bit word limit size
     
-    public typealias Pattern = (text: String, len: String.IndexDistance, mask: Int, alphabet: [Character: Int])
+    public typealias Pattern = (text: NSString, len: Int, mask: Int, alphabet: [UTF16Char: Int])
     
-    public typealias SearchResult = (index: Int, score: Double, ranges: [Range<String.Index>])
+    public typealias SearchResult = (index: Int, score: Double, ranges: [NSRange])
     
     public typealias FusableSearchResult = (
         index: Int,
@@ -45,7 +45,7 @@ public class Fuse {
         results: [(
             key: String,
             score: Double,
-            ranges: [Range<String.Index>]
+            ranges: [NSRange]
         )]
     )
     
@@ -77,19 +77,20 @@ public class Fuse {
     /// - Parameter aString: A string from which to create the pattern tuple
     /// - Returns: A tuple containing pattern metadata
     public func createPattern (from aString: String) -> Pattern? {
-        var pattern = self.isCaseSensitive ? aString : aString.lowercased()
-        if pattern.count > maxPatternLength {
-            pattern = String(pattern.prefix(maxPatternLength))
+        let pattern = self.isCaseSensitive ? aString : aString.localizedLowercase
+        var p = pattern as NSString
+        if p.length > maxPatternLength {
+            p = p.substring(to: maxPatternLength) as NSString
         }
 
-        let len = pattern.count
+        let len = p.length
         
         if len == 0 {
             return nil
         }
         
         return (
-            text: pattern,
+            text: p,
             len: len,
             mask: 1 << (len - 1),
             alphabet: FuseUtilities.calculatePatternAlphabet(pattern)
@@ -106,7 +107,7 @@ public class Fuse {
     ///   - pattern: The pattern to search for. This is created by calling `createPattern`
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters. If no match is found will return nil.
-    public func search(_ pattern: Pattern?, in aString: String) -> (score: Double, ranges: [Range<String.Index>])? {
+    public func search(_ pattern: Pattern?, in aString: String) -> (score: Double, ranges: [NSRange])? {
         guard let pattern = pattern else {
             return nil
         }
@@ -114,7 +115,7 @@ public class Fuse {
         //If tokenize is set we will split the pattern into individual words and take the average which should result in more accurate matches
         if tokenize {
             //Split this pattern by the space character
-            let wordPatterns = pattern.text.split(separator: " ").compactMap { createPattern(from: String($0)) }
+            let wordPatterns = pattern.text.components(separatedBy: " ").compactMap { createPattern(from: String($0)) }
             
             //Get the result for testing the full pattern string. If 2 strings have equal individual word matches this will boost the full string that matches best overall to the top
             let fullPattern = pattern
@@ -131,7 +132,7 @@ public class Fuse {
             }
             
             //Average the total score by dividing the summed scores by the number of word searches + the full string search. Also remove any range duplicates since we are searching full string and words individually.
-            let averagedResult = (score: results.score / Double(wordPatterns.count + 1), ranges: Array<Range<String.Index>>(Set<Range<String.Index>>(results.ranges)))
+            let averagedResult = (score: results.score / Double(wordPatterns.count + 1), ranges: Array<NSRange>(Set<NSRange>(results.ranges)))
             
             //If the averaged score is 1 then there were no matches so return nil. Otherwise return the average result
             return averagedResult.score == 1 ? nil : averagedResult
@@ -153,39 +154,42 @@ public class Fuse {
     ///   - pattern: The pattern to search for. This is created by calling `createPattern`
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters. If no match is found will return a tuple with score of 1 and empty array of ranges.
-    private func _search(_ pattern: Pattern, in aString: String) -> (score: Double, ranges: [Range<String.Index>]) {
+    private func _search(_ pattern: Pattern, in aString: String) -> (score: Double, ranges: [NSRange]) {
         
-        var text = aString
+        var text = aString as NSString
         
         if !self.isCaseSensitive {
-            text = text.lowercased()
+            text = text.localizedLowercase as NSString
         }
         
         // Exact match
         if (pattern.text == text) {
-            return (0, [text.startIndex..<text.endIndex])
+            return (0, [NSRange(location: 0, length: text.length)])
         }
         
-        let textLength = text.count
+        let textLength = text.length
         
         let location = self.location
         let distance = self.distance
         var threshold = self.threshold
         
-        var bestLocation: String.IndexDistance? = {
-            if let index = text.index(of: pattern.text, startingFrom: location) {
-                return text.distance(from: text.startIndex, to: index)
+        var bestLocation: Int? = {
+            let range = text.localizedStandardRange(of: pattern.text as String)
+            if range.location == NSNotFound {
+                return nil
             }
-            return nil
+            return abs(range.location - location)
         }()
         
         // A mask of the matches. We'll use to determine all the ranges of the matches
         var matchMaskArr = [Int](repeating: 0, count: textLength)
         
         // Get all exact matches, here for speed up
-        var index = text.index(of: pattern.text, startingFrom: bestLocation)
+        var index = text.index(of: pattern.text as String, startingFrom: bestLocation)
+        
         while (index != nil) {
-            let i = text.distance(from: text.startIndex, to: index!)
+            // TODO -- should this be abs(range.location - location) ?
+            let i = index!
             let score = FuseUtilities.calculateScore(pattern.len,
                                                      e: 0,
                                                      x: i,
@@ -193,7 +197,8 @@ public class Fuse {
                                                      distance: distance)
             threshold = min(threshold, score)
             bestLocation = i + pattern.len
-            index = text.index(of: pattern.text, startingFrom: bestLocation)
+            
+            index = text.index(of: pattern.text as String, startingFrom: bestLocation)
             
             var idx = 0
             while (idx < pattern.len) {
@@ -209,7 +214,7 @@ public class Fuse {
         var binMax: Int = pattern.len + textLength
         var lastBitArr = [Int]()
         
-        let textCount = text.count
+        let textCount = text.length
         
         // Magic begins now
         for i in 0..<pattern.len {
@@ -241,21 +246,26 @@ public class Fuse {
                 continue
             }
             
-            var currentLocationIndex: String.Index? = nil
+            var currentLocationIndex: Int? = nil
 
             for j in (start...finish).reversed() {
                 let currentLocation = j - 1
                 
                 // Need to check for `nil` case, since `patternAlphabet` is a sparse hash
                 let charMatch: Int = {
-                    if currentLocation < textCount {
-                        currentLocationIndex = currentLocationIndex.map{text.index(before: $0)} ?? text.index(text.startIndex, offsetBy: currentLocation)
-                        let char = text[currentLocationIndex!]
-                        if let result = pattern.alphabet[char] {
-                            return result
-                        }
+                    guard currentLocation < textCount else {
+                        return 0
                     }
-                    return 0
+                    
+                    if currentLocation == 0 {
+                        currentLocationIndex = 0
+                    } else {
+                        currentLocationIndex = currentLocation - 1
+                    }
+                    
+                    let char = text.character(at: currentLocationIndex!)
+                        
+                    return pattern.alphabet[char] ?? 0
                 }()
                 
                 // A match is found
@@ -303,18 +313,7 @@ public class Fuse {
             lastBitArr = bitArr
         }
         
-        // Find ranges and convert back to aString.
-        // Ranges can't be generated from one string and used in another.
-        let textRanges = FuseUtilities.findRanges(matchMaskArr, in: text)
-        var ranges: [Range<String.Index>] = []
-        for r in textRanges {
-            let pos = text.distance(from: text.startIndex, to: r.lowerBound)
-            let len = text.distance(from: r.lowerBound, to: r.upperBound)
-            if let low = aString.index(aString.startIndex, offsetBy: pos, limitedBy: aString.endIndex),
-               let high = aString.index(low, offsetBy: len, limitedBy: aString.endIndex) {
-                ranges.append(low..<high)
-            }
-        }
+        let ranges = FuseUtilities.findRanges(matchMaskArr, in: text)
         
         return (score, ranges)
     }
@@ -338,7 +337,7 @@ extension Fuse {
     ///   - text: the text string to search for.
     ///   - aString: The string in which to search for the pattern
     /// - Returns: A tuple containing a `score` between `0.0` (exact match) and `1` (not a match), and `ranges` of the matched characters.
-    public func search(_ text: String, in aString: String) -> (score: Double, ranges: [Range<String.Index>])? {
+    public func search(_ text: String, in aString: String) -> (score: Double, ranges: [NSRange])? {
         return self.search(self.createPattern(from: text), in: aString)
     }
     
@@ -454,7 +453,7 @@ extension Fuse {
             var scores = [Double]()
             var totalScore = 0.0
             
-            var propertyResults = [(key: String, score: Double, ranges: [Range<String.Index>])]()
+            var propertyResults = [(key: String, score: Double, ranges: [NSRange])]()
 
             item.properties.forEach { property in
                 let value = property.name
@@ -545,7 +544,7 @@ extension Fuse {
                     var scores = [Double]()
                     var totalScore = 0.0
                     
-                    var propertyResults = [(key: String, score: Double, ranges: [Range<String.Index>])]()
+                    var propertyResults = [(key: String, score: Double, ranges: [NSRange])]()
 
                     item.properties.forEach { property in
 

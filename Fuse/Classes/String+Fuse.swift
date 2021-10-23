@@ -62,3 +62,26 @@ extension String {
         }
     }
 }
+
+extension NSString {
+    func localizedStandardRange(of searchString: String, range: NSRange) -> NSRange {
+        let ss = self.substring(with: range) as NSString
+        return ss.localizedStandardRange(of: searchString)
+    }
+
+    func index(of string: String, startingFrom position: Int? = 0) -> Int? {
+        guard let position = position else {
+            return nil
+        }
+
+        if self.length < position {
+            return nil
+        }
+
+        let range = self.localizedStandardRange(of: string, range: NSRange(location: position, length: self.length - position))
+        if range.location == NSNotFound {
+            return nil
+        }
+        return range.location
+    }
+}
