@@ -74,7 +74,7 @@ extension NSString {
             return nil
         }
 
-        if self.length < position {
+        if self.length <= position {
             return nil
         }
 

@@ -174,7 +174,8 @@ public class Fuse {
         var threshold = self.threshold
         
         var bestLocation: Int? = {
-            let range = text.localizedStandardRange(of: pattern.text as String)
+            let inRange = NSRange(location: location, length: pattern.len - location)
+            let range = text.localizedStandardRange(of: pattern.text as String, range: inRange)
             if range.location == NSNotFound {
                 return nil
             }
@@ -185,25 +186,26 @@ public class Fuse {
         var matchMaskArr = [Int](repeating: 0, count: textLength)
         
         // Get all exact matches, here for speed up
-        var index = text.index(of: pattern.text as String, startingFrom: bestLocation)
-        
-        while (index != nil) {
-            // TODO -- should this be abs(range.location - location) ?
-            let i = index!
-            let score = FuseUtilities.calculateScore(pattern.len,
-                                                     e: 0,
-                                                     x: i,
-                                                     loc: location,
-                                                     distance: distance)
-            threshold = min(threshold, score)
-            bestLocation = i + pattern.len
+        if var pos = bestLocation {
+            var index = text.index(of: pattern.text as String, startingFrom: pos)
             
-            index = text.index(of: pattern.text as String, startingFrom: bestLocation)
-            
-            var idx = 0
-            while (idx < pattern.len) {
-              matchMaskArr[i + idx] = 1
-              idx += 1
+            while (index != nil) {
+                let i = index!
+                let score = FuseUtilities.calculateScore(pattern.len,
+                                                         e: 0,
+                                                         x: i,
+                                                         loc: location,
+                                                         distance: distance)
+                threshold = min(threshold, score)
+                pos = i + pattern.len
+                
+                index = text.index(of: pattern.text as String, startingFrom: pos)
+
+                var idx = 0
+                while (idx < pattern.len) {
+                    matchMaskArr[i + idx] = 1
+                    idx += 1
+                }
             }
         }
         
