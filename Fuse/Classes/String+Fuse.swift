@@ -68,6 +68,10 @@ extension NSString {
         let ss = self.substring(with: range) as NSString
         let r = ss.localizedStandardRange(of: searchString)
         
+        if r.location == NSNotFound {
+            return r
+        }
+        
         // Translate the location of the substring back to its location in the main string
         let loc = r.location + range.location
         
