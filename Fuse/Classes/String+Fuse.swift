@@ -37,6 +37,7 @@ extension String {
 
         let start: String.Index = self.index(self.startIndex, offsetBy: position)
         let range: Range<Index> = Range<Index>.init(uncheckedBounds: (lower: start, upper: self.endIndex))
+        // TODO -- use locale-aware search
         return self.range(of: aString, options: .literal, range: range, locale: nil)?.lowerBound
     }
 

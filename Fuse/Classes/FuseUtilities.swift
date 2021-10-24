@@ -51,7 +51,7 @@ class FuseUtilities {
         return mask
     }
 
-    /// Returns an array of `Range<String.Index>`, where each range represents a consecutive list of `1`s.
+    /// Returns an array of `Range<Int>`, where each range represents a consecutive list of `1`s.
     ///
     ///     let arr = [0, 1, 1, 0, 1, 1, 1 ]
     ///     let ranges = findRanges(arr)
@@ -60,10 +60,10 @@ class FuseUtilities {
     /// - Parameter mask: A string representing the value to search for.
     ///
     /// - Returns: `Range<Int>` array.
-    static func findRanges(_ mask: [Int], in aString: String) -> [Range<String.Index>] {
-        var ranges = [Range<String.Index>]()
-        var start: String.Index? = nil
-        var index = aString.startIndex
+    static func findRanges(_ mask: [Int], in aString: String) -> [Range<Int>] {
+        var ranges = [Range<Int>]()
+        var start: Int? = nil
+        var index = 0
         
         for bit in mask {
             if start == nil && bit == 1 {
@@ -74,11 +74,11 @@ class FuseUtilities {
             }
             
             // Advance to the next index in the string
-            index = aString.index(index, offsetBy: 1)
+            index += 1
         }
         
         if let start = start, mask.last == 1 {
-            ranges.append(start..<aString.endIndex)
+            ranges.append(start..<aString.count)
         }
         
         return ranges
