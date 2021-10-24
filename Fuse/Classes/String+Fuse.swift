@@ -35,12 +35,21 @@ extension String {
             return nil
         }
 
+        if position == 0 {
+            return self.localizedStandardRange(of: aString)?.lowerBound
+        }
+        
         let start: String.Index = self.index(self.startIndex, offsetBy: position)
         let range: Range<Index> = Range<Index>.init(uncheckedBounds: (lower: start, upper: self.endIndex))
-        // TODO -- use locale-aware search
-        return self.range(of: aString, options: .literal, range: range, locale: nil)?.lowerBound
+
+        return self.localizedStandardRange(of: aString, range: range)?.lowerBound
     }
 
+    func localizedStandardRange(of searchString: String, range: Range<Index>) -> Range<Index>? {
+        let ss = String(self[range])
+        return ss.localizedStandardRange(of: searchString)
+    }
+    
     /// Searches and returns the index within the string of the last occurrence of the `searchStr`.
     ///
     /// - Parameter searchStr: A string representing the value to search for. If `searchStr` is an empty string, then `position` is returned.

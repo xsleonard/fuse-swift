@@ -77,7 +77,7 @@ public class Fuse {
     /// - Parameter aString: A string from which to create the pattern tuple
     /// - Returns: A tuple containing pattern metadata
     public func createPattern (from aString: String) -> Pattern? {
-        var pattern = self.isCaseSensitive ? aString : aString.lowercased()
+        var pattern = self.isCaseSensitive ? aString : aString.localizedLowercase
         if pattern.count > maxPatternLength {
             pattern = String(pattern.prefix(maxPatternLength))
         }
@@ -114,7 +114,9 @@ public class Fuse {
         //If tokenize is set we will split the pattern into individual words and take the average which should result in more accurate matches
         if tokenize {
             //Split this pattern by the space character
-            let wordPatterns = pattern.text.split(separator: " ").compactMap { createPattern(from: String($0)) }
+            let wordPatterns = pattern.text.components(separatedBy: .whitespacesAndNewlines).compactMap {
+                createPattern(from: String($0))
+            }
             
             //Get the result for testing the full pattern string. If 2 strings have equal individual word matches this will boost the full string that matches best overall to the top
             let fullPattern = pattern
@@ -158,11 +160,11 @@ public class Fuse {
         var text = aString
         
         if !self.isCaseSensitive {
-            text = text.lowercased()
+            text = text.localizedLowercase
         }
         
         // Exact match
-        if (pattern.text == text) {
+        if text.localizedCompare(aString) == .orderedSame {
             return (0, [0..<text.count])
         }
         
