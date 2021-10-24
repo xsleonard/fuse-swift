@@ -164,7 +164,7 @@ public class Fuse {
         }
         
         // Exact match
-        if text.localizedCompare(aString) == .orderedSame {
+        if text.localizedCompare(pattern.text) == .orderedSame {
             return (0, [0..<text.count])
         }
         
